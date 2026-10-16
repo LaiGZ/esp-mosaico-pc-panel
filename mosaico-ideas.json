@@ -1,0 +1,49 @@
+{
+  "schema": "mosaico-ideas/project-upload/v1",
+  "project": {
+    "title": "PC 状态面板",
+    "categories": [
+      "display",
+      "communication"
+    ],
+    "boards": [],
+    "tags": [
+      "电脑监控",
+      "硬件状态",
+      "CPU",
+      "内存",
+      "GPU",
+      "网络速率",
+      "温度",
+      "Windows",
+      "Wi-Fi",
+      "UDP",
+      "桌面小屏",
+      "托盘"
+    ],
+    "license": "Apache-2.0（应用代码）。界面字体为系统字体子集，再分发前需替换，说明见 ui/fonts/NOTICE.md。",
+    "external_links": [
+      {
+        "label": "GitHub：esp-mosaico-pc-panel",
+        "url": "https://github.com/LaiGZ/esp-mosaico-pc-panel",
+        "platform": "github"
+      }
+    ]
+  },
+  "content": {
+    "readme": "mosaico-ideas.md",
+    "covers": [
+      "design/dash_gpu.png",
+      "design/detail_cpu.png",
+      "design/detail_net.png",
+      "design/info_page.png",
+      "design/gui_window.png",
+      "design/wifi_page.png"
+    ],
+    "resources": [],
+    "attachments": []
+  },
+  "release": {
+    "changelog": "首个版本：把 Windows 电脑的实时硬件状态显示到 ESP-Mosaico 的 480×480 触摸屏上。\n\n- 主面板四张卡片：CPU（占用 + 温度 + 功率 + 频率）、内存、GPU（占用 + 显存）、网络（下载 / 上传）。\n- 四张卡片各有一个详情页：顶部实时读数 + 两张折线图（含最低 / 最高统计），左右滑动返回。\n- 设备信息页：设备名称 / 型号 / 固件 / 设备 IP / 运行时长 / 内存，以及电脑连接状态（信号强度、电脑名、系统、电脑 IP、收包数）。\n- Wi-Fi 触摸配网：屏幕上选 2.4G 网络 + 软键盘输入密码，凭据存 NVS 掉电不丢，列表标出已连接网络。\n- 4 位配对码绑定电脑：同一网段多台电脑互不串台，设备端持久化，可随时重新配对。\n- 重力自动转屏、由电脑校时的时钟、5 秒无数据自动转为「等待连接」。\n- 电脑端（Windows）：单窗口 + 单托盘图标客户端，传感器进程内直读（psutil + typeperf + LibreHardwareMonitorLib），可打包单文件 exe 分发。"
+  }
+}
