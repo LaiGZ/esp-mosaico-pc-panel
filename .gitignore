@@ -1,0 +1,23 @@
+# ESP-IDF / ESP-Mosaico build output
+build/
+managed_components/
+dependencies.lock
+sdkconfig
+sdkconfig.old
+.codex-runs/
+.mosaico-state/
+
+# PC agent: fetched sensor library, local state, packaged output
+agent/lhm/
+agent/.pc_status_code
+agent/.pc_status_gui.json
+agent/__pycache__/
+__pycache__/
+*.py[cod]
+
+# Generated font subsets (rebuild with: python ui/fonts/make_fonts.py)
+ui/fonts/*.ttf
+
+# OS noise
+Thumbs.db
+desktop.ini

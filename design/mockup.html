@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>ESP-Mosaico PC 状态面板 · 设计稿</title>
+<style>
+  :root{
+    --bg:#070A0F; --card:#121A23; --card2:#0E151D; --line:#1E2A36;
+    --txt:#E7EEF5; --dim:#8A9AAB; --accent:#FF4C01; --cyan:#22D3EE;
+    --green:#2BD97B; --amber:#FFB020; --red:#FF4D4D;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#15181d; color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+    padding:28px; display:flex; flex-wrap:wrap; gap:26px; align-items:flex-start;
+  }
+  .frame{display:flex;flex-direction:column;gap:10px}
+  .cap{font-size:13px;color:#9aa7b4;letter-spacing:.3px}
+  .screen{
+    width:480px;height:480px;border-radius:26px;overflow:hidden;position:relative;
+    background:radial-gradient(120% 90% at 50% -10%, #16202B 0%, var(--bg) 62%);
+    border:1px solid #26313d; box-shadow:0 18px 50px rgba(0,0,0,.55);
+    display:flex;flex-direction:column; padding:18px 18px 14px;
+  }
+  /* ---------- header ---------- */
+  .hd{display:flex;align-items:center;justify-content:space-between;height:44px;flex:0 0 auto}
+  .host{display:flex;flex-direction:column;gap:2px}
+  .host b{font-size:20px;font-weight:700;letter-spacing:.2px}
+  .host span{font-size:12px;color:var(--dim)}
+  .live{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+  .dot.slow{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+  .dot.bad{background:var(--red);box-shadow:0 0 10px var(--red)}
+  /* ---------- grid ---------- */
+  .grid{
+    flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;
+    gap:12px;margin-top:14px;min-height:0;
+  }
+  .card{
+    background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
+    border:1px solid var(--line);border-radius:16px;padding:14px 15px;
+    display:flex;flex-direction:column;justify-content:space-between;min-height:0;position:relative;overflow:hidden;
+  }
+  .lbl{font-size:13px;color:var(--dim);display:flex;align-items:center;gap:7px}
+  .lbl i{width:7px;height:7px;border-radius:2px;background:var(--accent);display:inline-block}
+  .card .big{display:flex;align-items:baseline;gap:5px}
+  .card .big b{font-size:46px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .card .big u{text-decoration:none;font-size:17px;color:var(--dim);font-weight:600}
+  .card .sub{font-size:12.5px;color:var(--dim)}
+  .bar{height:7px;border-radius:6px;background:#1c2732;overflow:hidden;margin-top:8px}
+  .bar > span{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#ff7a3d,var(--accent))}
+  .bar.cyan > span{background:linear-gradient(90deg,#67e8f9,var(--cyan))}
+  .bar.green > span{background:linear-gradient(90deg,#7ff0b0,var(--green))}
+  .bar.amber > span{background:linear-gradient(90deg,#ffd27a,var(--amber))}
+  .temp{position:absolute;top:13px;right:14px;font-size:13px;font-weight:700;color:var(--amber);background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.3);border-radius:8px;padding:2px 7px}
+  .net{display:flex;flex-direction:column;gap:7px;justify-content:center}
+  .netrow{display:flex;align-items:center;justify-content:space-between;font-size:14px}
+  .netrow .k{color:var(--dim);display:flex;align-items:center;gap:7px}
+  .netrow .v{font-weight:800;font-size:19px;font-variant-numeric:tabular-nums}
+  .dl{color:var(--cyan)} .ul{color:#C4B5FD}
+  /* ---------- footer ---------- */
+  .ft{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:12.5px;color:var(--dim)}
+  .ft .gpu{display:flex;gap:14px}
+  .ft .gpu b{color:var(--txt);font-weight:700}
+  /* ---------- state screens ---------- */
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+  .center h2{font-size:26px;font-weight:800}
+  .center p{font-size:15px;color:var(--dim);line-height:1.6}
+  .spin{width:54px;height:54px;border-radius:50%;border:4px solid #1e2a36;border-top-color:var(--accent);animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .pill{font-size:13px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:7px 14px;background:var(--card2)}
+  .bigicon{font-size:52px}
+</style>
+</head>
+<body>
+
+  <!-- ============ 1. 主界面：电脑状态（已连接） ============ -->
+  <div class="frame">
+    <div class="cap">① 主界面 · 已连接（PC 状态实时刷新，1s）</div>
+    <div class="screen">
+      <div class="hd">
+        <div class="host"><b>我的电脑</b><span>Windows 11 · DESKTOP-8K2QM</span></div>
+        <div class="live"><span class="dot"></span>已连接 · 1s</div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="lbl"><i></i>CPU</div>
+          <div class="temp">56°C</div>
+          <div class="big"><b>42</b><u>%</u></div>
+          <div class="bar"><span style="width:42%"></span></div>
+        </div>
+
+        <div class="card">
+          <div class="lbl"><i style="background:var(--cyan)"></i>内存</div>
+          <div class="big"><b>11.2</b><u>/ 32 GB</u></div>
+          <div class="bar cyan"><span style="width:35%"></span></div>
+          <div class="sub">已用 35%</div>
+        </div>
+
+        <div class="card">
+          <div class="lbl"><i style="background:var(--green)"></i>磁盘 C:</div>
+          <div class="big"><b>512</b><u>/ 1024 GB</u></div>
+          <div class="bar green"><span style="width:50%"></span></div>
+          <div class="sub">可用 512 GB</div>
+        </div>
+
+        <div class="card">
+          <div class="lbl"><i style="background:#C4B5FD"></i>网络</div>
+          <div class="net">
+            <div class="netrow"><span class="k">↓ 下载</span><span class="v dl">12.4</span></div>
+            <div class="netrow"><span class="k">↑ 上传</span><span class="v ul">0.8</span></div>
+            <div class="sub">MB/s · Intel Wi-Fi 6</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ft">
+        <div class="gpu"><span>GPU <b>23%</b> · 46°C</span><span>运行 <b>3天 4小时</b></span></div>
+        <span>21:03:44</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2. 连接中 ============ -->
+  <div class="frame">
+    <div class="cap">② 状态页 · 正在连接电脑</div>
+    <div class="screen">
+      <div class="hd">
+        <div class="host"><b>我的电脑</b><span>DESKTOP-8K2QM</span></div>
+        <div class="live"><span class="dot bad"></span>未连接</div>
+      </div>
+      <div class="center">
+        <div class="spin"></div>
+        <h2>正在等待电脑…</h2>
+        <p>请确认电脑端「状态上报」程序已启动<br>并处于同一局域网</p>
+        <div class="pill">本机 192.168.1.42 · 已重试 3 次</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3. 配网 ============ -->
+  <div class="frame">
+    <div class="cap">③ 首次配网（触摸操作）</div>
+    <div class="screen">
+      <div class="hd">
+        <div class="host"><b>连接无线网络</b><span>选择 2.4GHz Wi-Fi 并输入密码</span></div>
+        <div class="live"><span class="dot slow"></span>配置中</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:12px;margin-top:16px">
+        <div class="card" style="flex-direction:row;align-items:center;justify-content:space-between">
+          <span style="font-size:16px">🏠 MyHome-2.4G</span><span style="color:var(--green);font-size:14px">-42 dBm</span>
+        </div>
+        <div class="card" style="flex-direction:row;align-items:center;justify-content:space-between">
+          <span style="font-size:16px">🏠 Office-Guest</span><span style="color:var(--amber);font-size:14px">-68 dBm</span>
+        </div>
+        <div class="card" style="flex-direction:row;align-items:center;justify-content:space-between">
+          <span style="font-size:16px">🏠 TP-LINK_5G</span><span style="color:var(--red);font-size:14px">-85 dBm</span>
+        </div>
+        <div class="pill" style="text-align:center;margin-top:auto">点击网络名称 → 输入密码 → 保存并重启</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
