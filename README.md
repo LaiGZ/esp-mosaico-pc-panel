@@ -44,6 +44,9 @@ python agent/run_gui.bat         # 或 python agent/pc_status_gui.py
 > 与原项目的差异：**不移植桌面投屏**。设备只接收并显示电脑的状态指标（CPU / 内存 / GPU /
 > 网络 / 温度 / 功率 / 显存），不再传输图像，因此带宽与内存占用极低。
 
+> **下载 Windows 客户端**：[Release v1.0.0](https://github.com/LaiGZ/esp-mosaico-pc-panel/releases/tag/v1.0.0)
+> —— `pc_status_panel-1.0.0-win64.zip`，单文件 exe，目标电脑不用装 Python。
+
 ## 功能
 
 | 功能 | 说明 |
