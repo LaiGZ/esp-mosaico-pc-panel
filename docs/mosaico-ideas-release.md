@@ -1,7 +1,7 @@
 # PC 状态面板 · Mosaico Ideas 发布材料
 
 > 目标站点：<https://mosaico-ideas.espressif.com>
-> 应用版本：**1.0.0** ｜ 设备：ESP-Mosaico（ESP32-S31）｜ 材料生成时间：2026-10-16
+> 应用版本：**1.0.0** ｜ 设备：ESP-Mosaico（ESP32-S31）｜ 材料生成：2026-10-16，最近更新：2026-10-19（补 Windows 客户端 exe 包）
 > 状态：**材料已备齐并通过本地校验，尚未上传**（上传会生成草稿，是否提交审核由你来点）
 
 ---
@@ -252,6 +252,7 @@ python mosaico.py project upload \
 | 3 | **截图脱敏** | 见第 4 节的 ⚠️；要公开建议遮挡，我可以生成遮挡版 |
 | 4 | 内存 / 显卡详情页截图 | 目前没有可用截图（详见第 7 节），要补需要临时打开 `main.c` 的 `DEBUG_OPEN_DETAIL_ON_BOOT` 编译并烧一次设备 |
 | 5 | changelog 措辞 | 现在是「首个版本」；如果平台要求更短，可以只留第 1 行 |
+| 6 | 客户端下载链接 | exe 超出附件上限，走外部分发；项目描述里补一条下载链接（GitHub Release / 网盘），见第 8 节 |
 
 ---
 
@@ -275,16 +276,41 @@ python mosaico.py project upload \
 
 ---
 
-## 8. 相关文件索引
+## 8. Windows 客户端 exe 包（下载分发）
+
+| 项 | 值 |
+| --- | --- |
+| 分发压缩包 | `D:\laigz\esp32\tools\pc_status_panel\pc_status_panel-1.0.0-win64.zip`（27.9 MiB） |
+| 包内文件 | `pc_status_panel.exe`（28.17 MB）+ `使用说明.txt` + `第三方许可.txt` + `LICENSE.txt` |
+| ZIP SHA-256 | `5b3c6ff808a51bb853cde431614418cf8a74cdf457420493438324b3f0e92288` |
+| EXE SHA-256 | `93bbfe51dcab016adbd953229f9cfebfb382dec30d39c989caac3254dd71a5bd` |
+| 打包时间 | 2026-10-16 18:11 构建的 exe（含"无控制台子进程不闪黑框"修复），2026-10-19 打包 |
+| 依赖 | 无 —— Python 运行时、psutil、pythonnet、pystray、LibreHardwareMonitorLib 全部已内置 |
+
+**它不能放进平台的「附件」**：平台限制单个资料 ≤ 20 MiB，而这个 exe 本身已是压缩过的
+onefile 包，再 zip 也只有 27.9 MiB ✗。所以客户端走**外部分发**（GitHub Release / 网盘），
+把下载链接写进项目描述即可。（如果一定要塞进附件，只能用 UPX 再压，但容易招致杀软误报，不建议。）
+
+**上架前的准备**（和固件一起打包，用户下载后解压即用）：
+
+1. 解压到一个**可写**目录（不要放 `C:\Program Files`），双击 `pc_status_panel.exe`；
+2. 填设备 IP + 端口 33340 → 开始上报 → 用窗口里的 4 位配对码在设备上配对；
+3. 首次运行会有 SmartScreen「未知发布者」提示（未签名），以及第一次读温度时的一次 UAC。
+
+---
+
+## 9. 相关文件索引
 
 | 文件 | 用途 |
 | --- | --- |
 | `D:\laigz\esp32\tools\mosaico-ideas\pc_status_panel-1.0.0.irisfw` | **要上传的固件** |
 | `D:\laigz\esp32\tools\mosaico-ideas\Mosaico-Ideas-发布材料.md` | 本文档（发布工作目录副本） |
+| `D:\laigz\esp32\tools\pc_status_panel\pc_status_panel-1.0.0-win64.zip` | **Windows 客户端分发包** |
 | `vibe\projects\pc_display\docs\mosaico-ideas-release.md` | 本文档（工作区/仓库正式位置） |
 | `vibe\projects\pc_display\mosaico-ideas.md` | 项目描述源文件（`content.readme`） |
 | `vibe\projects\pc_display\mosaico-ideas.json` | 上架元数据（标题/分类/标签/许可/外链/封面/changelog） |
 | `vibe\projects\pc_display\build\pc_display-system-update.irisfw` | 构建产出的源包 |
+| `vibe\projects\pc_display\agent\build_exe.py` | 重新打包 exe 的脚本 |
 | `vibe\projects\pc_display\design\*.png` | 封面与截图 |
 | `vibe\projects\pc_display\README.md` | 项目完整技术文档（架构、协议、已知坑） |
 
