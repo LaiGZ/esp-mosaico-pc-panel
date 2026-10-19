@@ -1,7 +1,7 @@
 # PC 状态面板 · Mosaico Ideas 发布材料
 
 > 目标站点：<https://mosaico-ideas.espressif.com>
-> 应用版本：**1.0.0** ｜ 设备：ESP-Mosaico（ESP32-S31）｜ 材料生成：2026-10-16，最近更新：2026-10-19（补 Windows 客户端 exe 包）
+> 应用版本：**1.0.0** ｜ 设备：ESP-Mosaico（ESP32-S31）｜ 材料生成：2026-10-16，最近更新：2026-10-19（仓库开源 + GitHub Release v1.0.0）
 > 状态：**材料已备齐并通过本地校验，尚未上传**（上传会生成草稿，是否提交审核由你来点）
 
 ---
@@ -247,12 +247,12 @@ python mosaico.py project upload \
 
 | # | 事项 | 说明 |
 | --- | --- | --- |
-| 1 | **GitHub 外链指向私有仓库** | 现在页面上的外链会 404。要么把仓库转公开（我可以一条命令改），要么把 `external_links` 删掉 |
+| 1 | ~~GitHub 外链指向私有仓库~~ | ✅ 已解决：仓库已转为公开（<https://github.com/LaiGZ/esp-mosaico-pc-panel>） |
 | 2 | **描述正文里的图片** | 手工上传的话需要再传一次；或直接走方式 B |
 | 3 | **截图脱敏** | 见第 4 节的 ⚠️；要公开建议遮挡，我可以生成遮挡版 |
 | 4 | 内存 / 显卡详情页截图 | 目前没有可用截图（详见第 7 节），要补需要临时打开 `main.c` 的 `DEBUG_OPEN_DETAIL_ON_BOOT` 编译并烧一次设备 |
 | 5 | changelog 措辞 | 现在是「首个版本」；如果平台要求更短，可以只留第 1 行 |
-| 6 | 客户端下载链接 | exe 超出附件上限，走外部分发；项目描述里补一条下载链接（GitHub Release / 网盘），见第 8 节 |
+| 6 | ~~客户端下载链接~~ | ✅ 已解决：GitHub Release `v1.0.0` 已上传 zip，描述与 `external_links` 都已补好，见第 8 节 |
 
 ---
 
@@ -271,6 +271,11 @@ python mosaico.py project upload \
   （副作用：暂时没有内存 / 显卡详情页的可用截图，所以正文只放了 CPU 与网络两张详情图。）
 - 应用目录补了 `LICENSE`（Apache-2.0，与仓库内一致）；`README.md` 首句改成「本项目把……」。
 - GitHub 仓库同步：`5c2fd4b`（初始）→ `f32a365`（发布元数据 + 截图改名）→ `1ff0e1c`（描述排版）。
+- **仓库开源**：`PATCH /repos/…{"private": false}` → 仓库地址 <https://github.com/LaiGZ/esp-mosaico-pc-panel> 可公开访问。
+- **GitHub Release `v1.0.0`**：以当前 `main` 为提交、把 `pc_status_panel-1.0.0-win64.zip`
+  作为资产上传；资产直链
+  <https://github.com/LaiGZ/esp-mosaico-pc-panel/releases/download/v1.0.0/pc_status_panel-1.0.0-win64.zip>
+  （已在项目描述与 `external_links` 中引用）。
 
 **没有做：** 没有登录 Mosaico Ideas、没有上传、没有下载/擦写设备、没有提交审核、没有改任何生产配置。
 
@@ -287,9 +292,13 @@ python mosaico.py project upload \
 | 打包时间 | 2026-10-16 18:11 构建的 exe（含"无控制台子进程不闪黑框"修复），2026-10-19 打包 |
 | 依赖 | 无 —— Python 运行时、psutil、pythonnet、pystray、LibreHardwareMonitorLib 全部已内置 |
 
-**它不能放进平台的「附件」**：平台限制单个资料 ≤ 20 MiB，而这个 exe 本身已是压缩过的
-onefile 包，再 zip 也只有 27.9 MiB ✗。所以客户端走**外部分发**（GitHub Release / 网盘），
-把下载链接写进项目描述即可。（如果一定要塞进附件，只能用 UPX 再压，但容易招致杀软误报，不建议。）
+| 分发方式 | **GitHub Release `v1.0.0`**（公开下载） |
+| 下载页 | <https://github.com/LaiGZ/esp-mosaico-pc-panel/releases/tag/v1.0.0> |
+| 资产直链 | <https://github.com/LaiGZ/esp-mosaico-pc-panel/releases/download/v1.0.0/pc_status_panel-1.0.0-win64.zip> |
+
+**它不进平台的「附件」**：平台限制单个资料 ≤ 20 MiB，而这个 exe 本身已经是压缩过的 onefile 包，
+再 zip 也有 27.9 MiB ✗。所以客户端走 **GitHub Release**（资产上限 2 GB），项目描述与
+`external_links` 里直接给下载链接。（真要塞进附件只能 UPX 再压，容易招杀软误报，不建议。）
 
 **上架前的准备**（和固件一起打包，用户下载后解压即用）：
 

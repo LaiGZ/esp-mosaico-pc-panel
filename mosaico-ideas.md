@@ -40,6 +40,8 @@
 - 采集方式：`psutil`（CPU / 内存 / 网络）+ `typeperf`（GPU 占用）+ LibreHardwareMonitor
   （温度、功率、显存）。
 - 可以打包成**单文件 exe**，拷到其他电脑上双击即用，目标电脑不用装 Python。
+- **下载**：[`pc_status_panel-1.0.0-win64.zip`](https://github.com/LaiGZ/esp-mosaico-pc-panel/releases/download/v1.0.0/pc_status_panel-1.0.0-win64.zip)
+  —— 解压到一个可写目录后双击 `pc_status_panel.exe`；包内含使用说明与第三方组件许可。
 
 ![PC 端客户端](design/gui_window.png)
 
@@ -79,3 +81,5 @@
   的「电脑硬件状态显示」能力，按 480×480 触摸屏重新设计了界面，并去掉了桌面投屏部分。
 - 传感器读取使用 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)
   的库（MPL-2.0）。
+- 源码、版本记录与 Windows 客户端下载：
+  [github.com/LaiGZ/esp-mosaico-pc-panel](https://github.com/LaiGZ/esp-mosaico-pc-panel)

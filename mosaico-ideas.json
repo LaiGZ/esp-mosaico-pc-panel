@@ -27,6 +27,11 @@
         "label": "GitHub：esp-mosaico-pc-panel",
         "url": "https://github.com/LaiGZ/esp-mosaico-pc-panel",
         "platform": "github"
+      },
+      {
+        "label": "下载 Windows 客户端 v1.0.0",
+        "url": "https://github.com/LaiGZ/esp-mosaico-pc-panel/releases/tag/v1.0.0",
+        "platform": "github"
       }
     ]
   },
