@@ -206,6 +206,17 @@ python mosaico.py project upload \
 
 **没有做：** 没有登录 Mosaico Ideas、没有上传、没有下载/擦写设备、没有提交审核、没有改任何生产配置。
 
+**2026-10-19 追加：**
+
+- **界面调整**：首页右上角改为**设备电量**（板载 BQ27220 电量计，15 秒轮询、仅变化时刷新；读不到显示 `--`），
+  「连接」按钮移到**设备信息页右上角**。场景自检 `178 objects / page_info children 30` 通过，
+  已 `system-update` 装到设备并用截图确认（100%，4189 mV / 0 mA / 30.4 °C，即电池是满的），
+  封面主图 `design/dash_gpu.png` 已换上带电量显示的新截图。
+- **主机环境修复（很重要）**：运行 `mosaico.py` 的 Python 缺少 `pyserial`，导致 ROM 恢复通道
+  检测不到设备（报 `No ESP-Mosaico ROM Download Mode interface was detected`）。`pip install pyserial`
+  后恢复可用；设备已用 `recover` 从 ROM 下载模式救回（底座固件 0.1.4），NVS 里的 Wi-Fi 凭据与
+  配对信息都保留（面板照常收到这台电脑的数据），随后用 `system-update` 安装本应用。
+
 ---
 
 ## 8. Windows 客户端 exe 包（下载分发）

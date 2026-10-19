@@ -16,7 +16,7 @@
       "bind_target": "text",
       "x": 38,
       "y": 20,
-      "w": 300,
+      "w": 284,
       "h": 34,
       "text": "电脑状态",
       "font_size": 24,
@@ -66,30 +66,36 @@
       "hidden": true
     },
     {
-      "type": "button",
-      "parent": -1,
-      "name": "btn_settings",
-      "x": 372,
-      "y": 20,
-      "w": 94,
-      "h": 44,
-      "radius": 12,
-      "bg_color": "#1B2531",
-      "border_color": "#33404F",
-      "border_width": 1,
-      "callback": "open_setup"
-    },
-    {
       "type": "label",
-      "parent": 4,
-      "x": 0,
-      "y": 11,
-      "w": 94,
+      "parent": -1,
+      "name": "batt_text",
+      "font_charset": " %+-0123456789",
+      "bind": "batt_text",
+      "bind_target": "text",
+      "text_align": "right",
+      "x": 320,
+      "y": 24,
+      "w": 90,
       "h": 24,
-      "text": "连接",
+      "text": "--",
       "font_size": 17,
       "fg_color": "#E7EEF5",
-      "text_align": "center"
+      "font": "fonts/pc-ui-bold.ttf"
+    },
+    {
+      "type": "progress",
+      "parent": -1,
+      "name": "batt_bar",
+      "x": 418,
+      "y": 27,
+      "w": 44,
+      "h": 18,
+      "radius": 5,
+      "value": 0,
+      "min": 0,
+      "max": 100,
+      "bg_color": "#1C2732",
+      "fg_color": "#2BD97B"
     },
     {
       "type": "button",
@@ -2180,7 +2186,7 @@
       "name": "info_title",
       "x": 20,
       "y": 18,
-      "w": 440,
+      "w": 336,
       "h": 32,
       "text": "设备信息",
       "font_size": 24,
@@ -3053,6 +3059,32 @@
       "fg_color": "#FFFFFF",
       "text_align": "center",
       "font": "fonts/pc-ui-bold.ttf"
+    },
+    {
+      "type": "button",
+      "parent": 110,
+      "name": "btn_settings",
+      "x": 372,
+      "y": 14,
+      "w": 88,
+      "h": 40,
+      "radius": 12,
+      "bg_color": "#1B2531",
+      "border_color": "#33404F",
+      "border_width": 1,
+      "callback": "open_setup"
+    },
+    {
+      "type": "label",
+      "x": 0,
+      "y": 8,
+      "w": 88,
+      "h": 24,
+      "text": "连接",
+      "text_align": "center",
+      "font_size": 17,
+      "fg_color": "#E7EEF5",
+      "parent": 176
     }
   ]
 }

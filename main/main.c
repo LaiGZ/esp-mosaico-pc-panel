@@ -110,6 +110,15 @@ typedef struct {
     int          detail_metric; /* metric of the open trend page */
     unsigned     sample_log_divider;
 
+    /* Device battery (BQ27220 on the shared I2C bus). -1 means "not readable
+     * yet"; the gauge is attached lazily so a board without a cell still boots
+     * and simply shows --. */
+    bool         battery_ok;
+    bool         battery_read_ok;
+    int          battery_percent;
+    int          ui_battery;    /* last value published to the UI (-2 = never) */
+    int64_t      battery_next_ms;
+
     /* Last values pushed to the UI. ESP-GSP setters enqueue work and may
      * allocate temporary storage, so unchanged state is not re-published. */
     bool         ui_link_online;
@@ -757,6 +766,49 @@ static void refresh(app_ctx_t *a)
     remember(pc_panel_set_page(a->ui, a->panel, PC_PANEL_PAGE_WAIT));
 }
 
+/* Poll the BQ27220 fuel gauge on the shared I2C bus. The first call attaches
+ * it; a failed attach or read keeps the previous value (or "--" when nothing
+ * has been read yet), so a board without a battery simply boots and shows --
+ * instead of holding up start-up. */
+#define APP_BATTERY_PERIOD_MS 15000
+
+static void poll_battery(app_ctx_t *a)
+{
+    const int64_t now_ms = esp_timer_get_time() / 1000;
+    if (now_ms < a->battery_next_ms) {
+        return;
+    }
+    a->battery_next_ms = now_ms + APP_BATTERY_PERIOD_MS;
+
+    int percent = a->battery_percent;
+    if (!a->battery_ok && bsp_battery_init() == ESP_OK) {
+        a->battery_ok = true;
+        ESP_LOGI(TAG, "battery gauge attached");
+    }
+    if (a->battery_ok) {
+        bsp_battery_status_t status;
+        const bool read_ok = bsp_battery_read(&status) == ESP_OK;
+        if (read_ok) {
+            if ((int)status.state_of_charge != percent) {
+                ESP_LOGI(TAG, "battery %u%% (%d mV, %d mA, %.1f C)",
+                         (unsigned)status.state_of_charge, status.voltage_mv,
+                         status.current_ma, status.temperature_c);
+            }
+            percent = status.state_of_charge;
+        } else if (a->battery_read_ok) {
+            /* Log the transition only: the retained log ring is small. */
+            ESP_LOGW(TAG, "battery read failed");
+        }
+        a->battery_read_ok = read_ok;
+    }
+
+    a->battery_percent = percent;
+    if (percent != a->ui_battery) {
+        remember(pc_panel_set_battery(a->ui, a->panel, percent));
+        a->ui_battery = percent;
+    }
+}
+
 static void app_task(void *arg)
 {
     app_ctx_t *a = arg;
@@ -827,6 +879,7 @@ static void app_task(void *arg)
         }
 
         heap_watch_poll();
+        poll_battery(a);
         vTaskDelay(pdMS_TO_TICKS(APP_TICK_MS));
     }
 }
@@ -838,6 +891,11 @@ void app_main(void)
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_iris_boot_probe());
     ESP_ERROR_CHECK(nvs_flash_init());
     iris_ota_support_start();
+
+    /* Battery is unknown until the first gauge poll; -2 forces that first push
+     * even when the gauge reports 0 %. */
+    s_app.battery_percent = -1;
+    s_app.ui_battery = -2;
 
     /*
      * The IMU is brought up before the display: bsp_imu_init() re-asserts the

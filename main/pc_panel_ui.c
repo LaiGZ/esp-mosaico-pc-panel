@@ -444,6 +444,29 @@ esp_gsp_err_t pc_panel_set_host(esp_gsp_handle_t ui, pc_panel_t *panel,
     return err;
 }
 
+esp_gsp_err_t pc_panel_set_battery(esp_gsp_handle_t ui, pc_panel_t *panel,
+                                   int percent)
+{
+    if (!ui || !panel) {
+        return ESP_GSP_ERR_INVALID_ARG;
+    }
+    char text[8];
+    if (percent < 0) {
+        snprintf(text, sizeof(text), "--");
+        percent = 0;
+    } else {
+        if (percent > 100) {
+            percent = 100;
+        }
+        snprintf(text, sizeof(text), "%d%%", percent);
+    }
+    esp_gsp_err_t err = put_text(ui, GSP_PC_BIND_BATT_TEXT, text);
+    if (err == ESP_GSP_OK) {
+        err = put_value(ui, GSP_PC_OBJ_KEY_BATT_BAR, percent);
+    }
+    return err;
+}
+
 esp_gsp_err_t pc_panel_update(esp_gsp_handle_t ui, pc_panel_t *panel,
                               const pc_sample_t *sample)
 {

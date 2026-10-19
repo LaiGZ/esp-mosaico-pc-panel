@@ -163,6 +163,14 @@ esp_gsp_err_t pc_panel_set_host(esp_gsp_handle_t ui, pc_panel_t *panel,
                                 const char *name, const char *subtitle);
 
 /**
+ * Show the device's own battery level in the dashboard header.
+ * @p percent is 0..100; a negative value means "not readable yet" and renders
+ * as @c -- with an empty bar.
+ */
+esp_gsp_err_t pc_panel_set_battery(esp_gsp_handle_t ui, pc_panel_t *panel,
+                                   int percent);
+
+/**
  * Name of the step that last failed inside this module, or "" when the last
  * call succeeded. Lets the (non-portable) caller log the failure without this
  * file depending on a logging stack.
