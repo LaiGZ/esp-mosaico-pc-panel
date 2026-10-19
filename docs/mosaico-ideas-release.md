@@ -10,7 +10,7 @@
 
 | 表单栏位 | 你要交的东西 | 在哪里 |
 | --- | --- | --- |
-| ② 固件文件 → **添加 Iris 固件** | `pc_status_panel-1.0.0.irisfw`（1.22 MiB） | `D:\laigz\esp32\tools\mosaico-ideas\` |
+| ② 固件文件 → **添加 Iris 固件** | `pc_status_panel-1.0.0.irisfw`（1.23 MiB） | `D:\laigz\esp32\tools\mosaico-ideas\` |
 | ③ 项目描述 | 下面的 Markdown 全文 | 见 [第 2 节](#2-材料二项目描述markdown) |
 | ① 项目信息（标题 / 分类 / 标签 / 许可 / 外链 / 封面） | 见 [第 3 节](#3-表单其余字段) 与 [第 4 节](#4-封面图片) | 机器可读版：`projects/pc_display/mosaico-ideas.json` |
 
@@ -23,8 +23,8 @@
 | 项目 | 值 |
 | --- | --- |
 | 路径 | `D:\laigz\esp32\tools\mosaico-ideas\pc_status_panel-1.0.0.irisfw` |
-| 大小 | 1,279,838 B（1.22 MiB；平台上限 32 MiB） |
-| SHA-256 | `36095adc2c7a7f3573b43b8d20d9cb73e9304f9e3ab9587337cf373dbb23d53f` |
+| 大小 | 1,288,694 B（1.23 MiB；平台上限 32 MiB） |
+| SHA-256 | `770796f00fa449590740a76a0f8a8bae53c92fa2147f85fb9ce7d04627bd181b` |
 | 版本 | `1.0.0` |
 | 形态 | 无签名 `.irisfw`，内部 schema `esp-iris-system-update/v1` |
 | 源包 | `D:\laigz\esp32\vibe\projects\pc_display\build\pc_display-system-update.irisfw` |
@@ -42,8 +42,8 @@
 | 组件 | 目标地址 | 大小 | SHA-256 |
 | --- | --- | --- | --- |
 | `partition_table` | `0x8000` | 4,096 B | `4f8786d1…c7231` |
-| `application`（→ `ota_0`） | `0x210000` | 1,812,464 B | `5c91737a…0c0a4` |
-| `data`（→ `ui_apps`） | `0xF00000` | 329,232 B | `51552c17…a3187` |
+| `application`（→ `ota_0`） | `0x210000` | 1,829,584 B | `e889da9c…3db2d1` |
+| `data`（→ `ui_apps`） | `0xF00000` | 331,664 B | `b7f928a1…a6cef` |
 
 - 芯片：ESP32-S31（`chip_id = 32`），Flash 16 MiB，`flags = 0`
 - 不含 `bootloader` / `recovery` / 平台身份，`signature_verified = false`（平台接受无签名包）
