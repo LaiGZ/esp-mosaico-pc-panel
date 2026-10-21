@@ -27,6 +27,7 @@ import os
 import platform
 import re
 import secrets
+import struct
 import shutil
 import socket
 import subprocess
@@ -69,6 +70,42 @@ def app_dir() -> str:
 
 
 CODE_FILE = os.path.join(app_dir(), ".pc_status_code")
+
+
+
+def list_monitors():
+    """Enumerate the Windows monitors as [{rect, width, height, primary}]."""
+    import ctypes
+
+    class RECT(ctypes.Structure):
+        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                    ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+    class MONITORINFO(ctypes.Structure):
+        _fields_ = [("cbSize", ctypes.c_ulong), ("rcMonitor", RECT),
+                    ("rcWork", RECT), ("dwFlags", ctypes.c_ulong)]
+
+    monitors = []
+    user32 = ctypes.windll.user32
+    proc = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong,
+                              ctypes.POINTER(RECT), ctypes.c_double)
+
+    def _collect(hmon, hdc, rect, data):
+        info = MONITORINFO()
+        info.cbSize = ctypes.sizeof(MONITORINFO)
+        if user32.GetMonitorInfoW(hmon, ctypes.byref(info)):
+            r = info.rcMonitor
+            monitors.append({
+                "rect": (r.left, r.top, r.right, r.bottom),
+                "width": r.right - r.left,
+                "height": r.bottom - r.top,
+                "primary": bool(info.dwFlags & 1),
+            })
+        return 1
+
+    user32.EnumDisplayMonitors(None, None, proc(_collect), 0)
+    monitors.sort(key=lambda m: (not m["primary"], m["rect"][0]))
+    return monitors
 
 
 def pairing_code(preferred: str = "") -> str:
@@ -853,3 +890,112 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# --------------------------------------------------------------- mirror
+# The panel's third root page shows the desktop. Frames travel on their own
+# UDP port so the status stream keeps its own (tiny) cadence.
+MIRROR_PORT = 33341
+MIRROR_WIDTH = 480
+MIRROR_HEIGHT = 420
+MIRROR_CHUNK = 1200
+MIRROR_FPS = 8
+MIRROR_MAX_BYTES = 128 * 1024
+
+
+class MirrorSender:
+    """Stream this desktop to the panel (480x420, letterboxed, JPEG, chunked).
+
+    Wire format (little endian): 'P' 'C' | type | frame_id | index | count |
+    payload_len, followed by up to MIRROR_CHUNK payload bytes. The device
+    reassembles frames and hands the newest one to ESP-GSP for decoding.
+    """
+
+    def __init__(self, host, port=MIRROR_PORT, fps=MIRROR_FPS, quality=70,
+                 bbox=None):
+        self.host = host
+        self.port = port
+        self.fps = max(1, min(30, int(fps)))
+        self.quality = quality
+        self.bbox = bbox          # (left, top, right, bottom) or None
+        self.sent_frames = 0
+        self.sent_bytes = 0
+        self.last_error = ""
+        self._thread = None
+        self._stop = threading.Event()
+
+    def start(self):
+        if self._thread and self._thread.is_alive():
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, name="mirror", daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        self._stop.set()
+        thread = self._thread
+        self._thread = None
+        if thread:
+            thread.join(timeout=2.0)
+
+    @property
+    def running(self):
+        return bool(self._thread and self._thread.is_alive())
+
+    def _encode(self, shot):
+        from PIL import Image
+        import io as _io
+
+        shot = shot.convert("RGB")
+        shot.thumbnail((MIRROR_WIDTH, MIRROR_HEIGHT), Image.BILINEAR)
+        canvas = Image.new("RGB", (MIRROR_WIDTH, MIRROR_HEIGHT), (0, 0, 0))
+        canvas.paste(shot, ((MIRROR_WIDTH - shot.width) // 2,
+                            (MIRROR_HEIGHT - shot.height) // 2))
+        quality = self.quality
+        while True:
+            buffer = _io.BytesIO()
+            canvas.save(buffer, "JPEG", quality=quality)
+            data = buffer.getvalue()
+            if len(data) <= MIRROR_MAX_BYTES or quality <= 30:
+                return data
+            quality -= 10
+
+    def _run(self):
+        from PIL import ImageGrab
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        frame_id = 0
+        try:
+            while not self._stop.is_set():
+                started = time.monotonic()
+                try:
+                    # Capture one monitor: an ultrawide / multi-monitor
+                    # desktop would letterbox down to a thin strip.
+                    shot = (ImageGrab.grab(bbox=self.bbox) if self.bbox
+                            else ImageGrab.grab())
+                    data = self._encode(shot)
+                except Exception as exc:            # screen locked, DPI change…
+                    self.last_error = str(exc)
+                    time.sleep(0.5)
+                    continue
+                count = max(1, (len(data) + MIRROR_CHUNK - 1) // MIRROR_CHUNK)
+                frame_id = (frame_id + 1) & 0xFFFF
+                sent = True
+                for index in range(count):
+                    chunk = data[index * MIRROR_CHUNK:(index + 1) * MIRROR_CHUNK]
+                    header = struct.pack("<2sBHHHH", b"PC", 0, frame_id,
+                                         index, count, len(chunk))
+                    try:
+                        sock.sendto(header + chunk, (self.host, self.port))
+                    except OSError as exc:
+                        self.last_error = str(exc)
+                        sent = False
+                        break
+                if sent:
+                    self.sent_frames += 1
+                    self.sent_bytes += len(data)
+                    self.last_error = ""
+                elapsed = time.monotonic() - started
+                self._stop.wait(max(0.0, 1.0 / self.fps - elapsed))
+        finally:
+            sock.close()

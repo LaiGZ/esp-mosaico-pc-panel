@@ -28,6 +28,8 @@ typedef enum {
     PC_PANEL_PAGE_INFO,
     PC_PANEL_PAGE_PAIR,
     PC_PANEL_PAGE_MATCH,
+    /** Third root page: desktop mirror (status strip + streamed picture). */
+    PC_PANEL_PAGE_MIRROR,
 } pc_panel_page_t;
 
 /** Metrics that have a detail page with live trend charts. */
@@ -88,9 +90,14 @@ typedef struct {
     void (*on_scan)(void *ctx);
     void (*on_pick_ap)(void *ctx, int index);
     void (*on_save)(void *ctx);
-    /* Back is raised by the on-screen control and by horizontal swipes in
-     * either direction, so the application keeps a single navigation owner. */
+    /* Back is raised by the on-screen control and by horizontal swipes on the
+     * detail / provisioning pages, so the application keeps a single
+     * navigation owner. */
     void (*on_back)(void *ctx);
+    /** A swipe on one of the three root pages: +1 forward, -1 backward.
+     *  Root pages cycle instead of going "back", so a swipe there must not
+     *  be treated as navigation back. */
+    void (*on_root_swipe)(void *ctx, int direction);
     /** A dashboard card was tapped; @p metric is a pc_panel_metric_t. */
     void (*on_open_detail)(void *ctx, int metric);
     /** The pairing page's confirm button was pressed. */
@@ -169,6 +176,18 @@ esp_gsp_err_t pc_panel_set_host(esp_gsp_handle_t ui, pc_panel_t *panel,
  */
 esp_gsp_err_t pc_panel_set_battery(esp_gsp_handle_t ui, pc_panel_t *panel,
                                    int percent);
+
+/**
+ * Push one encoded frame (JPEG/PNG/QOI) to the mirror page's picture view.
+ * ESP-GSP copies the payload before returning, so @p data can be reused at once.
+ */
+esp_gsp_err_t pc_panel_set_mirror_view(esp_gsp_handle_t ui, pc_panel_t *panel,
+                                       const void *data, size_t size);
+
+/** Update the status strip above the mirrored picture. */
+esp_gsp_err_t pc_panel_set_mirror_strip(esp_gsp_handle_t ui, pc_panel_t *panel,
+                                        const char *cpu, const char *mem,
+                                        const char *clock);
 
 /**
  * Name of the step that last failed inside this module, or "" when the last

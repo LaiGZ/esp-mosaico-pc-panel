@@ -1,6 +1,6 @@
 idf_component_register(
     SRCS "main.c" "board_display.c" "pc_panel_ui.c" "pc_link.c" "wifi_manager.c"
-        "heap_watch.c" "orientation.c"
+        "heap_watch.c" "orientation.c" "mirror.c"
     INCLUDE_DIRS "."
     REQUIRES esp_iris esp-mosaico-bsp esp_mosaico_app_recovery
         esp_mosaico_gsp_bundle esp_mosaico_gsp_iris freertos nvs_flash

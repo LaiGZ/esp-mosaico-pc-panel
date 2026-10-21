@@ -134,6 +134,10 @@ static esp_gsp_err_t apply_page(esp_gsp_handle_t ui, pc_panel_t *p)
         err = put_visible(ui, GSP_PC_BIND_MATCH_PAGE,
                           p->page == PC_PANEL_PAGE_MATCH);
     }
+    if (err == ESP_GSP_OK) {
+        err = put_visible(ui, GSP_PC_BIND_PAGE_MIRROR,
+                          p->page == PC_PANEL_PAGE_MIRROR);
+    }
     if (err != ESP_GSP_OK) {
         return err;
     }
@@ -257,12 +261,24 @@ static void on_ui_event(esp_gsp_handle_t ui, const esp_gsp_event_t *event, void 
 /* ------------------------------------------------------------- swipe */
 
 /*
- * A horizontal swipe always means "one step back", matching the on-screen
- * hint. The application owns the page stack, so forward navigation stays on
- * explicit controls (the dashboard's 设置 button, the waiting page's button).
+ * Detail and provisioning pages treat a horizontal swipe as "one step back".
+ * The three root pages (dashboard / device info / cast) form a ring instead:
+ * a swipe there cycles through them and never navigates back, otherwise the
+ * gesture would fight with the page the user is trying to reach.
  */
-static void request_navigation(pc_panel_t *p)
+static void request_navigation(pc_panel_t *p, int32_t dx)
 {
+    const bool root = p->page == PC_PANEL_PAGE_DASH ||
+                      p->page == PC_PANEL_PAGE_INFO ||
+                      p->page == PC_PANEL_PAGE_MIRROR;
+    if (root) {
+        if (p->cbs.on_root_swipe) {
+            p->cbs.on_root_swipe(p->ctx, dx < 0 ? 1 : -1);
+        } else if (p->cbs.on_back) {
+            p->cbs.on_back(p->ctx);
+        }
+        return;
+    }
     if (p->cbs.on_back) {
         p->cbs.on_back(p->ctx);
     }
@@ -304,7 +320,7 @@ static bool on_input(esp_gsp_handle_t ui, int32_t x, int32_t y, bool pressed,
              * immediate even if no release sample follows a fast flick. */
             if (!p->swipe_fired && abs(dx) >= SWIPE_COMMIT_PX) {
                 p->swipe_fired = true;
-                request_navigation(p);
+                request_navigation(p, dx);
             }
             return true;
         }
@@ -316,7 +332,7 @@ static bool on_input(esp_gsp_handle_t ui, int32_t x, int32_t y, bool pressed,
         const int32_t dx = p->swipe_last_x - p->swipe_x0;
         const int32_t dy = p->swipe_last_y - p->swipe_y0;
         if (abs(dx) >= SWIPE_COMMIT_PX && abs(dx) > abs(dy)) {
-            request_navigation(p);
+            request_navigation(p, dx);
         }
     }
     p->swipe_tracking = false;
@@ -463,6 +479,32 @@ esp_gsp_err_t pc_panel_set_battery(esp_gsp_handle_t ui, pc_panel_t *panel,
     esp_gsp_err_t err = put_text(ui, GSP_PC_BIND_BATT_TEXT, text);
     if (err == ESP_GSP_OK) {
         err = put_value(ui, GSP_PC_OBJ_KEY_BATT_BAR, percent);
+    }
+    return err;
+}
+
+esp_gsp_err_t pc_panel_set_mirror_view(esp_gsp_handle_t ui, pc_panel_t *panel,
+                                       const void *data, size_t size)
+{
+    if (!ui || !panel || !data || size == 0) {
+        return ESP_GSP_ERR_INVALID_ARG;
+    }
+    return esp_gsp_set_image(ui, GSP_PC_BIND_MIRROR_VIEW, data, size);
+}
+
+esp_gsp_err_t pc_panel_set_mirror_strip(esp_gsp_handle_t ui, pc_panel_t *panel,
+                                        const char *cpu, const char *mem,
+                                        const char *clock)
+{
+    if (!ui || !panel) {
+        return ESP_GSP_ERR_INVALID_ARG;
+    }
+    esp_gsp_err_t err = put_text(ui, GSP_PC_BIND_MIRROR_CPU, cpu);
+    if (err == ESP_GSP_OK) {
+        err = put_text(ui, GSP_PC_BIND_MIRROR_MEM, mem);
+    }
+    if (err == ESP_GSP_OK) {
+        err = put_text(ui, GSP_PC_BIND_MIRROR_CLOCK, clock);
     }
     return err;
 }

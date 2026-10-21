@@ -30,13 +30,45 @@ if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
     sys.stderr = sys.stdout
 
+def _missing_module(name: str) -> None:
+    """依赖缺失时给出能直接照做的提示，而不是一屏 traceback。"""
+    if name.split(".")[0] == "pc_status_agent":
+        here = os.path.dirname(os.path.abspath(__file__))
+        print(
+            "找不到配套的 pc_status_agent.py。\n"
+            f"  本脚本目录：{here}\n"
+            f"  需要的文件：{os.path.join(here, 'pc_status_agent.py')}\n"
+            "\n"
+            "  pc_status_gui.py 与 pc_status_agent.py 是一个程序的两半，必须放在同一个目录里。\n"
+            "  正确做法是从仓库整份取用（不要在网页上单独下载某一个 .py）：\n"
+            "      git clone https://github.com/LaiGZ/esp-mosaico-pc-panel\n"
+            "      cd esp-mosaico-pc-panel/agent\n"
+            "      python -m pip install -r requirements.txt\n"
+            "      python fetch_lhm.py\n"
+            "      python pc_status_gui.py\n"
+            "\n"
+            "  如果只是要使用客户端、不想装 Python：下载 Release 里的\n"
+            "      pc_status_panel-1.0.0-win64.zip\n"
+            "  解压到可写目录后双击 pc_status_panel.exe。",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"缺少依赖模块：{name}\n"
+            "  在 agent 目录下安装依赖：\n"
+            "      python -m pip install -r requirements.txt\n"
+            "  （等价于 python -m pip install psutil pythonnet pystray pillow）",
+            file=sys.stderr,
+        )
+    raise SystemExit(1)
+
+
 try:
     from pc_status_agent import (Collector, DeviceIdentity, GpuUsage, LhmDirect,
-                                 app_dir, drain_identity, ensure_lhm, pairing_code)
-except ImportError:  # pragma: no cover - 依赖缺失时给出可执行的提示
-    print("缺少依赖或找不到 pc_status_agent.py。请先安装：\n"
-          "    python -m pip install psutil", file=sys.stderr)
-    raise
+                                 MirrorSender, app_dir, drain_identity, ensure_lhm,
+                                 list_monitors, pairing_code)
+except ModuleNotFoundError as exc:
+    _missing_module(exc.name or str(exc))
 
 # 与设备界面一致的深色配色。
 BG = "#070A0F"
@@ -160,6 +192,9 @@ class AgentApp:
         self._stop = threading.Event()
         self.identity = DeviceIdentity()
 
+        # 投屏：把桌面发到面板的第三屏（独立 UDP 端口，按需开启）。
+        self.mirror = None
+
         # 托盘：关闭窗口 = 缩到托盘继续上报，只有托盘里一个小图标。
         self.tray = None
         self._want_show = False
@@ -282,6 +317,33 @@ class AgentApp:
         tk.Label(buttons, text=f"间隔 {self.interval:g}s", bg=BG, fg=MUTED,
                  font=_text(10)).pack(side="left", padx=(12, 0))
 
+        self.var_mirror = tk.BooleanVar(value=False)
+        self.chk_mirror = tk.Checkbutton(
+            buttons, text="投屏", variable=self.var_mirror,
+            command=self._toggle_mirror, bg=BG, fg=MUTED,
+            activebackground=BG, activeforeground=TEXT, selectcolor=CARD,
+            font=_text(10), cursor="hand2", highlightthickness=0, bd=0)
+        self.chk_mirror.pack(side="right")
+
+        self.monitors = list_monitors()
+        self.monitor_choices = {}
+        for index, monitor in enumerate(self.monitors):
+            label = (f"屏幕 {index + 1} · {monitor['width']}×{monitor['height']}"
+                     + ("（主屏）" if monitor["primary"] else ""))
+            self.monitor_choices[label] = monitor["rect"]
+        labels = list(self.monitor_choices) or ["屏幕 1"]
+        self.var_monitor = tk.StringVar(value=labels[0])
+        self.opt_monitor = tk.OptionMenu(buttons, self.var_monitor, *labels)
+        self.opt_monitor.configure(bg=BG, fg=MUTED, activebackground=CARD,
+                                   activeforeground=TEXT, highlightthickness=0,
+                                   bd=0, relief="flat", font=_text(10),
+                                   cursor="hand2")
+        self.opt_monitor["menu"].configure(bg=CARD, fg=TEXT,
+                                           activebackground=BORDER,
+                                           activeforeground=TEXT, bd=0,
+                                           font=_text(10))
+        self.opt_monitor.pack(side="right", padx=(0, 8))
+
         self.status = tk.Label(root, text="未开始", bg=BG, fg=MUTED,
                                font=_text(10), anchor="w", justify="left")
         self.status.pack(fill="x", padx=20, pady=(10, 4))
@@ -296,6 +358,27 @@ class AgentApp:
         return f"{gpu}\n温度/功率/显存: {self.source_label}"
 
     # ---------------------------------------------------------------- 上报
+    def _toggle_mirror(self) -> None:
+        """桌面投屏开关：把屏幕发到面板第三屏（可在上报之外单独开）。"""
+        if self.var_mirror.get():
+            host = self.var_host.get().strip()
+            if not host:
+                messagebox.showerror("缺少设备地址", "先填设备地址，再打开投屏。")
+                self.var_mirror.set(False)
+                return
+            bbox = self.monitor_choices.get(self.var_monitor.get())
+            if self.mirror is None:
+                self.mirror = MirrorSender(host, bbox=bbox)
+            else:
+                self.mirror.host = host
+                self.mirror.bbox = bbox
+            self.mirror.start()
+            self._set_status("投屏中：在面板上滑到第三屏查看", MUTED)
+        else:
+            if self.mirror is not None:
+                self.mirror.stop()
+            self._set_status("投屏已停止", MUTED)
+
     def _toggle(self) -> None:
         if self._thread and self._thread.is_alive():
             self._stop.set()
@@ -492,8 +575,13 @@ class AgentApp:
             return
         self._quit()
 
+    def thread_mirror_running(self) -> bool:
+        return self.mirror is not None and self.mirror.running
+
     def _quit(self) -> None:
         self._stop.set()
+        if self.thread_mirror_running():
+            self.mirror.stop()
         if self._thread:
             self._thread.join(timeout=2.0)
         if self.direct is not None:

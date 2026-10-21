@@ -7,6 +7,7 @@
 // 480x480 CO5300 display. The retained Vibe Mode / OTA contract is preserved.
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -25,6 +26,7 @@
 #include "heap_watch.h"
 #include "iris_ota_support.h"
 #include "iris_screen_mirror.h"
+#include "mirror.h"
 #include "nvs_flash.h"
 #include "orientation.h"
 #include "pc_link.h"
@@ -81,6 +83,7 @@ typedef struct {
     /* Requests raised by render-task callbacks, serviced by the app task. */
     volatile bool want_scan;
     volatile bool want_save;
+    volatile int  want_root_swipe;   /* +1 next root page, -1 previous */
     volatile bool want_back;
     volatile bool want_pair;
     volatile bool want_unpair;
@@ -113,6 +116,8 @@ typedef struct {
     /* Device battery (BQ27220 on the shared I2C bus). -1 means "not readable
      * yet"; the gauge is attached lazily so a board without a cell still boots
      * and simply shows --. */
+    /* Mirror receiver is started by the app task once boot has settled. */
+    bool         mirror_started;
     bool         battery_ok;
     bool         battery_read_ok;
     int          battery_percent;
@@ -137,6 +142,8 @@ typedef struct {
     bool         pair_on_code;
     char         ui_match_sub[96];
     char         ui_match_ip[24];
+    /* Last string pushed to the mirror page's status strip. */
+    char         ui_mirror_strip[72];
 
     esp_gsp_err_t last_error;
 } app_ctx_t;
@@ -144,6 +151,40 @@ typedef struct {
 static app_ctx_t s_app;
 
 /* ------------------------------------------------------------- callbacks */
+
+static void remember(esp_gsp_err_t err);
+
+/* Swipes on the three root pages cycle them instead of navigating back. */
+static const pc_panel_page_t kRootPages[] = {
+    PC_PANEL_PAGE_DASH,
+    PC_PANEL_PAGE_INFO,
+    PC_PANEL_PAGE_MIRROR,
+};
+#define ROOT_PAGE_COUNT ((int)(sizeof(kRootPages) / sizeof(kRootPages[0])))
+
+static void cycle_root_page(app_ctx_t *a, int step)
+{
+    const pc_panel_page_t page = pc_panel_page(a->panel);
+    int index = -1;
+    for (int i = 0; i < ROOT_PAGE_COUNT; ++i) {
+        if (kRootPages[i] == page) {
+            index = i;
+            break;
+        }
+    }
+    if (index < 0) {
+        remember(pc_panel_set_page(a->ui, a->panel, PC_PANEL_PAGE_DASH));
+        return;
+    }
+    const int next = (index + step + ROOT_PAGE_COUNT) % ROOT_PAGE_COUNT;
+    remember(pc_panel_set_page(a->ui, a->panel, kRootPages[next]));
+}
+
+static void cb_root_swipe(void *ctx, int direction)
+{
+    app_ctx_t *a = ctx;
+    a->want_root_swipe = direction >= 0 ? 1 : -1;
+}
 
 static void cb_open_setup(void *ctx)
 {
@@ -494,19 +535,24 @@ static void service_requests(app_ctx_t *a)
         a->want_scan = false;
         run_scan(a);
     }
+    const int root_swipe = a->want_root_swipe;
+    if (root_swipe) {
+        a->want_root_swipe = 0;
+        cycle_root_page(a, root_swipe);
+    }
     if (a->want_back) {
         a->want_back = false;
         a->pending_pick = -1;
         const pc_panel_page_t page = pc_panel_page(a->panel);
-        if (pc_panel_showing_detail(a->panel) || page == PC_PANEL_PAGE_INFO) {
-            /* Leave the trend / information page; refresh() picks the page. */
+        if (pc_panel_showing_detail(a->panel)) {
+            /* Leave the trend page; refresh() picks the page. */
             remember(pc_panel_set_page(a->ui, a->panel, PC_PANEL_PAGE_DASH));
         } else if (page == PC_PANEL_PAGE_PASS) {
             a->setup_mode = true;    /* back to the network list */
             remember(pc_panel_set_page(a->ui, a->panel, PC_PANEL_PAGE_WIFI));
         } else if (page == PC_PANEL_PAGE_DASH) {
             /* Horizontal swipes on the dashboard open the information page;
-             * it is not "back", but the two root pages behave like a pair. */
+             * it is not "back", but the root pages behave like a ring. */
             remember(pc_panel_set_page(a->ui, a->panel, PC_PANEL_PAGE_INFO));
         } else {
             a->setup_mode = false;   /* leave provisioning */
@@ -567,6 +613,10 @@ static void update_clock(app_ctx_t *a)
                           (esp_timer_get_time() / 1000 - a->sample_ms) / 1000;
         struct tm tm;
         time_t t = (time_t)seconds;
+        /* Beijing time, without relying on the newlib TZ database: the epoch
+         * the PC sends is absolute, so shift it by +08:00 before breaking it
+         * into fields. Every clock on the panel goes through here. */
+        t = (time_t)(seconds + 8 * 3600);
         gmtime_r(&t, &tm);
         snprintf(text, sizeof(text), "%02d:%02d:%02d", tm.tm_hour, tm.tm_min,
                  tm.tm_sec);
@@ -703,6 +753,10 @@ static void refresh(app_ctx_t *a)
         return;    /* stays until the user swipes back */
     }
 
+    if (pc_panel_page(a->panel) == PC_PANEL_PAGE_MIRROR) {
+        return;    /* the cast page is also a root page: never snap it away */
+    }
+
     if (a->setup_mode) {
         /* Provisioning owns the screen: show the network list unless the user
          * is already entering a password. */
@@ -809,6 +863,40 @@ static void poll_battery(app_ctx_t *a)
     }
 }
 
+/* Mirror page: keep the status strip current and hand the newest streamed
+ * frame to GSP (which copies it and decodes on its background worker). */
+static void mirror_frame_ready(const uint8_t *data, size_t size, void *ctx)
+{
+    app_ctx_t *a = ctx;
+    remember(pc_panel_set_mirror_view(a->ui, a->panel, data, size));
+}
+
+static void service_mirror(app_ctx_t *a)
+{
+    if (pc_panel_page(a->panel) != PC_PANEL_PAGE_MIRROR) {
+        return;
+    }
+
+    char cpu[16];
+    char mem[20];
+    char strip[72];
+    const char *clock = a->ui_clock[0] ? a->ui_clock : "--:--";
+    if (a->pc_have_sample) {
+        snprintf(cpu, sizeof(cpu), "CPU %d%%", a->sample.cpu);
+        snprintf(mem, sizeof(mem), "内存 %d%%", a->sample.mem_percent);
+    } else {
+        snprintf(cpu, sizeof(cpu), "CPU --");
+        snprintf(mem, sizeof(mem), "内存 --");
+    }
+    snprintf(strip, sizeof(strip), "%s|%s|%s", cpu, mem, clock);
+    if (strcmp(strip, a->ui_mirror_strip) != 0) {
+        strlcpy(a->ui_mirror_strip, strip, sizeof(a->ui_mirror_strip));
+        remember(pc_panel_set_mirror_strip(a->ui, a->panel, cpu, mem, clock));
+    }
+
+    pc_mirror_poll(mirror_frame_ready, a);
+}
+
 static void app_task(void *arg)
 {
     app_ctx_t *a = arg;
@@ -880,6 +968,7 @@ static void app_task(void *arg)
 
         heap_watch_poll();
         poll_battery(a);
+        service_mirror(a);
         vTaskDelay(pdMS_TO_TICKS(APP_TICK_MS));
     }
 }
@@ -957,6 +1046,7 @@ void app_main(void)
 
     const pc_panel_callbacks_t callbacks = {
         .on_open_setup = cb_open_setup,
+    .on_root_swipe = cb_root_swipe,
         .on_scan = cb_scan,
         .on_pick_ap = cb_pick_ap,
         .on_save = cb_save,
@@ -986,6 +1076,13 @@ void app_main(void)
         if (s_app.setup_mode) {
             s_app.want_scan = true;
         }
+    }
+
+    /* Desktop mirror: the PC client streams JPEG frames to udp/33341. The Wi-Fi
+     * stack owns lwIP, so the receiver starts after it is up. */
+    const esp_err_t mirror_err = pc_mirror_start();
+    if (mirror_err != ESP_OK) {
+        ESP_LOGW(TAG, "mirror receiver unavailable: %s", esp_err_to_name(mirror_err));
     }
 
     err = pc_link_create(&s_app.link, PC_LINK_DEFAULT_PORT);
