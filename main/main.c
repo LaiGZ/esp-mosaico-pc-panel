@@ -31,6 +31,7 @@
 #include "orientation.h"
 #include "pc_link.h"
 #include "pc_panel_ui.h"
+#include "bundle_gsp.h"
 #include "ui_bundle.h"
 #include "wifi_manager.h"
 
@@ -118,6 +119,7 @@ typedef struct {
      * and simply shows --. */
     /* Mirror receiver is started by the app task once boot has settled. */
     bool         mirror_started;
+    bool         mirror_live;      /* frames flowing: picture shown, hint hidden */
     bool         battery_ok;
     bool         battery_read_ok;
     int          battery_percent;

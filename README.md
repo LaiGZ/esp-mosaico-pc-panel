@@ -1,42 +1,4 @@
-# ESP-Mosaico PC 状态面板
-
-把 Windows 电脑的实时硬件状态显示在 ESP-Mosaico 的 480×480 触摸屏上：CPU 占用 / 温度 / 功率 /
-频率、内存、GPU 占用 / 显存、网络上下行；点卡片进入详情页看双折线趋势。设备通过 Wi-Fi 与电脑
-通信，**多台电脑在同一网段时用 4 位配对码绑定**，互不干扰。
-
-本仓库是 ESP-Mosaico 工作区中 `projects/pc_display` 的独立副本，方便单独查看、分发与打包。
-完整文档见下方「PC 状态面板（pc_display）」一节。
-
-## 设备端（固件）
-
-```sh
-# 1) 先准备好 ESP-Mosaico 工作区（含 submodule 与 pinned ESP-IDF）
-# 2) 把本仓库内容放进工作区：
-#      <workspace>/projects/pc_display/
-# 3) 生成中文字体子集（仓库不包含生成的字体文件）
-python ui/fonts/make_fonts.py
-# 4) 构建与安装
-python mosaico.py project build --project projects/pc_display
-python mosaico.py iris system-update --project projects/pc_display
-```
-
-## PC 端（状态上报客户端）
-
-图形界面 + 托盘，采集逻辑与设备端协议在同一个 Python 文件里；传感器温度/功率/显存通过
-`LibreHardwareMonitorLib.dll` **在客户端进程内**读取，不需要单独运行 LibreHardwareMonitor。
-
-```sh
-python -m pip install psutil pythonnet pystray
-python agent/fetch_lhm.py        # 下载传感器库到 agent/lhm/
-python agent/run_gui.bat         # 或 python agent/pc_status_gui.py
-# 想要单文件 exe 分发：python -m pip install pyinstaller && python agent/build_exe.py
-```
-
-**配对流程**：客户端显示一个 4 位配对码；设备连上 Wi-Fi 后先出现「连接电脑」页 →
-点「匹配」→ 用屏幕数字键盘输入该码 → 绑定完成，设备只显示这台电脑的数据
-（想换电脑：设备信息页「重新配对」）。
-
----
+# PC 状态面板（pc_display）
 
 本项目把「[ESP32C3-PC-Wireless-Display](https://github.com/WuyongLab/ESP32C3-PC-Wireless-Display)」
 的**电脑硬件状态显示**能力移植到 ESP-Mosaico 开发板上，并按 480×480 触摸屏重新设计了界面。
@@ -53,8 +15,6 @@ python agent/run_gui.bat         # 或 python agent/pc_status_gui.py
 |---|---|
 | 状态面板 | CPU（含温度/功率/频率）、内存、GPU（占用 + 显存 + 温度）、网络上下行、运行时长、时钟；**首页右上角显示设备自身电量**（板载 BQ27220 电量计，读不到显示 `--`） |
 | 连接入口 | 在**设备信息页右上角**的「连接」按钮（首页右上角改为电量显示） |
-| 投屏 | 首页三屏循环（首页 ⇄ 设备信息 ⇄ **投屏**）：第三屏实时显示电脑桌面（JPEG over UDP 33341，默认 8 fps），顶部 60 px 保留 CPU/内存/时钟状态条；客户端可**选择投哪块屏幕**；离开第三屏即停止解码 |
-| 时钟 | 北京时间（PC 下发绝对时间戳，设备端 +08:00 显示，所有界面统一） |
 | 详情页 | 点 CPU / 内存 / GPU / 网络卡片进入：顶部实时读数，下方**两张折线图**，含最低最高统计 |
 | 设备识别 | 设备收到状态包后回一个**身份小包**，PC 端因此显示「已连接设备：PC 状态面板」（名称/型号/固件/设备 IP）；这也是真实的连接指示 —— 收到回执才算通 |
 | 设备配对 | 两段式：Wi-Fi 连上后显示「连接电脑」引导页（提示打开 PC 客户端 + 「匹配」按钮）→ 点「匹配」进入**数字键盘**输入电脑上显示的 4 位配对码 → 绑定。设备端记录 **码 + 对方地址/主机名**（NVS 持久化），只显示已配对那台电脑的数据；信息页「重新配对」直接进配对码页 |
@@ -129,7 +89,8 @@ python agent/run_gui.bat         # 或 python agent/pc_status_gui.py
 ### 1. PC 端上报程序
 
 ```sh
-python -m pip install psutil
+# 依赖（一次装好即可；含 psutil / pythonnet / pystray / Pillow）
+python -m pip install -r projects/pc_display/agent/requirements.txt
 
 # 图形界面（推荐日常使用；也可直接双击 agent\run_gui.bat）
 python projects/pc_display/agent/pc_status_gui.py --host 192.168.1.42
@@ -137,6 +98,9 @@ python projects/pc_display/agent/pc_status_gui.py --host 192.168.1.42
 # 命令行（最省资源，适合开机自启）
 python projects/pc_display/agent/pc_status_agent.py --host 192.168.1.42
 ```
+
+> `pc_status_gui.py` 与 `pc_status_agent.py` 是一个程序的两半，**必须放在同一目录**里一起用；
+> 不要在网页上单独下载某一个 `.py`，直接 clone 整个仓库（或以 Release 里的单文件 exe 使用）。
 
 **最省事的用法**：双击 `agent/run_gui.bat` → 在「设备地址」里填设备屏幕上显示的 IP →
 点「开始上报」。窗口顶部会显示**已连接设备：PC 状态面板**（拿到设备回执才有这一行，
