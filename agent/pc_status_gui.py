@@ -280,22 +280,16 @@ class AgentApp:
         stats = tk.Frame(root, bg=CARD, highlightbackground=BORDER,
                          highlightthickness=1)
         stats.pack(fill="x", padx=20, pady=(10, 0))
+        line = tk.Frame(stats, bg=CARD)
+        line.pack(fill="x", padx=12, pady=8)
         self.stat_labels = {}
-        for row, (key, title, color) in enumerate((
-                ("cpu", "CPU", CPU), ("mem", "内存", MEM),
-                ("gpu", "GPU", GPU), ("net", "网络", NET_DOWN))):
-            line = tk.Frame(stats, bg=CARD)
-            line.pack(fill="x", padx=12, pady=(9 if row == 0 else 3,
-                                               3 if row < 3 else 9))
-            tk.Label(line, text=title, bg=CARD, fg=color, width=5, anchor="w",
-                     font=_text(10)).pack(side="left")
-            value = tk.Label(line, text="--", bg=CARD, fg=TEXT, anchor="w",
-                             font=_text(11))
-            value.pack(side="left", padx=(2, 0))
-            note = tk.Label(line, text="", bg=CARD, fg=MUTED, anchor="w",
-                            font=_text(9))
-            note.pack(side="left", padx=(10, 0))
-            self.stat_labels[key] = (value, note)
+        for key, title, color in (("cpu", "CPU", CPU), ("mem", "内存", MEM),
+                                  ("gpu", "GPU", GPU), ("net", "网络", NET_DOWN)):
+            tk.Label(line, text=title, bg=CARD, fg=color, font=_text(10)).pack(
+                side="left")
+            value = tk.Label(line, text="--", bg=CARD, fg=TEXT, font=_text(10))
+            value.pack(side="left", padx=(2, 12))
+            self.stat_labels[key] = value
 
         target = tk.Frame(root, bg=BG)
         target.pack(fill="x", padx=20, pady=(16, 0))
@@ -556,38 +550,25 @@ class AgentApp:
 
     def _render(self, p: dict) -> None:
         cpu = int(p.get("cpu", 0))
-        bits = []
+        cpu_text = f"{cpu}%"
         if "cpu_temp" in p:
-            bits.append(f"温度 {p['cpu_temp']}°C")
-        if "cpu_power" in p:
-            bits.append(f"{p['cpu_power']:.0f}W")
-        if "cpu_freq" in p:
-            bits.append(f"{p['cpu_freq'] / 1000:.2f}GHz")
-        self.stat_labels["cpu"][0].configure(text=f"{cpu}%")
-        self.stat_labels["cpu"][1].configure(text=" · ".join(bits) or "无传感器数据")
+            cpu_text += f" {p['cpu_temp']}°C"
+        self.stat_labels["cpu"].configure(text=cpu_text)
 
         used, total = p.get("mem_used", 0.0), p.get("mem_total", 0.0)
         percent = (used / total) if total else 0.0
-        self.stat_labels["mem"][0].configure(
-            text=f"{used:.1f} / {total:.0f} GB")
-        self.stat_labels["mem"][1].configure(text=f"已用 {percent * 100:.0f}%")
+        self.stat_labels["mem"].configure(
+            text=f"{percent * 100:.0f}% ({used:.0f}/{total:.0f}G)")
 
         gpu = p.get("gpu")
-        notes = []
+        gpu_text = "--" if gpu is None else f"{int(gpu)}%"
         if "gpu_mem_used" in p and "gpu_mem_total" in p:
-            notes.append(f"显存 {p['gpu_mem_used']:.2f} / {p['gpu_mem_total']:.1f} GB")
-        if "gpu_temp" in p:
-            notes.append(f"温度 {p['gpu_temp']}°C")
-        if "gpu_vram_temp" in p:
-            notes.append(f"显存 {p['gpu_vram_temp']}°C")
-        self.stat_labels["gpu"][0].configure(
-            text="--" if gpu is None else f"{int(gpu)}%")
-        self.stat_labels["gpu"][1].configure(
-            text=" · ".join(notes) or ("无 GPU 数据" if gpu is None else "无显存数据"))
+            gpu_text += f" {p['gpu_mem_used']:.1f}/{p['gpu_mem_total']:.1f}G"
+        self.stat_labels["gpu"].configure(text=gpu_text)
 
         down, up = p.get("net_down", 0.0), p.get("net_up", 0.0)
-        self.stat_labels["net"][0].configure(text=f"↓ {down:.1f} / ↑ {up:.1f} MB/s")
-        self.stat_labels["net"][1].configure(text="")
+        self.stat_labels["net"].configure(
+            text=f"↓{down:.1f} ↑{up:.1f} MB/s")
 
     # ---------------------------------------------------------------- 其他
     def _save_settings(self, host: str, port: int) -> None:
