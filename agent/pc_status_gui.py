@@ -344,6 +344,18 @@ class AgentApp:
                                            font=_text(10))
         self.opt_monitor.pack(side="right", padx=(0, 8))
 
+        self.var_fps = tk.StringVar(value="8")
+        self.opt_fps = tk.OptionMenu(buttons, self.var_fps, "5", "8", "12", "16", "20",
+                                     command=self._select_fps)
+        self.opt_fps.configure(bg=BG, fg=MUTED, activebackground=CARD,
+                               activeforeground=TEXT, highlightthickness=0, bd=0,
+                               relief="flat", font=_text(10), cursor="hand2")
+        self.opt_fps["menu"].configure(bg=CARD, fg=TEXT, activebackground=BORDER,
+                                       activeforeground=TEXT, bd=0, font=_text(10))
+        self.opt_fps.pack(side="right", padx=(0, 6))
+        tk.Label(buttons, text="fps", bg=BG, fg=MUTED,
+                 font=_text(10)).pack(side="right")
+
         self.status = tk.Label(root, text="未开始", bg=BG, fg=MUTED,
                                font=_text(10), anchor="w", justify="left")
         self.status.pack(fill="x", padx=20, pady=(10, 4))
@@ -367,17 +379,30 @@ class AgentApp:
                 self.var_mirror.set(False)
                 return
             bbox = self.monitor_choices.get(self.var_monitor.get())
+            try:
+                fps = int(self.var_fps.get())
+            except ValueError:
+                fps = 8
             if self.mirror is None:
-                self.mirror = MirrorSender(host, bbox=bbox)
+                self.mirror = MirrorSender(host, bbox=bbox, fps=fps)
             else:
                 self.mirror.host = host
                 self.mirror.bbox = bbox
+                self.mirror.fps = fps
             self.mirror.start()
             self._set_status("投屏中：在面板上滑到第三屏查看", MUTED)
         else:
             if self.mirror is not None:
                 self.mirror.stop()
             self._set_status("投屏已停止", MUTED)
+
+    def _select_fps(self, value: str) -> None:
+        try:
+            fps = int(value)
+        except ValueError:
+            return
+        if self.mirror is not None:
+            self.mirror.fps = max(1, min(30, fps))
 
     def _toggle(self) -> None:
         if self._thread and self._thread.is_alive():

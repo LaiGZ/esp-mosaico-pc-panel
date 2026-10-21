@@ -99,6 +99,8 @@ def main() -> int:
         "--collect-all", "pythonnet",
         "--collect-all", "clr_loader",
         "--hidden-import", "pystray._win32",
+        "--hidden-import", "mss",
+        "--hidden-import", "mss.windows",
         "--hidden-import", "clr",
         # 传感器库随 exe 一起分发（运行时解包到 sys._MEIPASS/lhm）
         "--add-data", f"{lhm}{os.pathsep}lhm",

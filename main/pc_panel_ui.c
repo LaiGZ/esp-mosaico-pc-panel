@@ -138,6 +138,22 @@ static esp_gsp_err_t apply_page(esp_gsp_handle_t ui, pc_panel_t *p)
         err = put_visible(ui, GSP_PC_BIND_PAGE_MIRROR,
                           p->page == PC_PANEL_PAGE_MIRROR);
     }
+    /*
+     * The four dashboard cards are root-level objects, so they keep receiving
+     * taps on every page unless they are disabled. Only the dashboard enables
+     * them: elsewhere a tap at a card position would open a detail page (and
+     * draw the pressed highlight) through whatever page is on top.
+     */
+    if (err == ESP_GSP_OK) {
+        static const gsp_component_key_t cards[] = {
+            GSP_PC_OBJ_KEY_CARD_CPU, GSP_PC_OBJ_KEY_CARD_MEM,
+            GSP_PC_OBJ_KEY_CARD_GPU, GSP_PC_OBJ_KEY_CARD_NET,
+        };
+        const bool dash = p->page == PC_PANEL_PAGE_DASH;
+        for (size_t i = 0; i < sizeof(cards) / sizeof(cards[0]); ++i) {
+            (void)esp_gsp_component_set_enabled(ui, cards[i], dash);
+        }
+    }
     if (err != ESP_GSP_OK) {
         return err;
     }

@@ -110,7 +110,8 @@
       "radius": 16,
       "border_color": "#1E2A36",
       "border_width": 1,
-      "callback": "open_cpu"
+      "callback": "open_cpu",
+      "enabled": true
     },
     {
       "type": "label",
@@ -201,7 +202,8 @@
       "radius": 16,
       "border_color": "#1E2A36",
       "border_width": 1,
-      "callback": "open_mem"
+      "callback": "open_mem",
+      "enabled": true
     },
     {
       "type": "label",
@@ -289,7 +291,8 @@
       "radius": 16,
       "border_color": "#1E2A36",
       "border_width": 1,
-      "callback": "open_gpu"
+      "callback": "open_gpu",
+      "enabled": true
     },
     {
       "type": "label",
@@ -395,7 +398,8 @@
       "radius": 16,
       "border_color": "#1E2A36",
       "border_width": 1,
-      "callback": "open_net"
+      "callback": "open_net",
+      "enabled": true
     },
     {
       "type": "label",
@@ -3142,19 +3146,6 @@
       "h": 24,
       "text": "--:--",
       "font_size": 15,
-      "fg_color": "#8A9AAB",
-      "parent": 178
-    },
-    {
-      "type": "label",
-      "name": "mirror_hint",
-      "x": 40,
-      "y": 220,
-      "w": 400,
-      "h": 44,
-      "text": "在电脑客户端勾选「投屏」",
-      "text_align": "center",
-      "font_size": 16,
       "fg_color": "#8A9AAB",
       "parent": 178
     },

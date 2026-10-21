@@ -923,6 +923,7 @@ class MirrorSender:
         self.last_error = ""
         self._thread = None
         self._stop = threading.Event()
+        self._mss = None
 
     def start(self):
         if self._thread and self._thread.is_alive():
@@ -941,6 +942,25 @@ class MirrorSender:
     @property
     def running(self):
         return bool(self._thread and self._thread.is_alive())
+
+    def _grab(self):
+        """Capture the selected monitor. mss is several times faster than PIL."""
+        from PIL import Image
+
+        if self._mss is not None:
+            if self.bbox:
+                left, top, right, bottom = self.bbox
+            else:
+                monitor = self._mss.monitors[1]      # primary
+                left, top = monitor["left"], monitor["top"]
+                right = left + monitor["width"]
+                bottom = top + monitor["height"]
+            raw = self._mss.grab({"left": left, "top": top,
+                                  "width": right - left, "height": bottom - top})
+            return Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
+        from PIL import ImageGrab
+        # all_screens=True is required for a bbox on a secondary monitor.
+        return ImageGrab.grab(bbox=self.bbox, all_screens=True)
 
     def _encode(self, shot):
         from PIL import Image
@@ -961,7 +981,13 @@ class MirrorSender:
             quality -= 10
 
     def _run(self):
-        from PIL import ImageGrab
+        from PIL import Image
+
+        try:
+            import mss as _mss
+            self._mss = _mss.mss()
+        except Exception:
+            self._mss = None                 # fall back to PIL.ImageGrab
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         frame_id = 0
@@ -969,10 +995,7 @@ class MirrorSender:
             while not self._stop.is_set():
                 started = time.monotonic()
                 try:
-                    # Capture one monitor: an ultrawide / multi-monitor
-                    # desktop would letterbox down to a thin strip.
-                    shot = (ImageGrab.grab(bbox=self.bbox) if self.bbox
-                            else ImageGrab.grab())
+                    shot = self._grab()
                     data = self._encode(shot)
                 except Exception as exc:            # screen locked, DPI change…
                     self.last_error = str(exc)

@@ -1,0 +1,9 @@
+# 运行客户端（窗口 + 托盘）需要的第三方包。
+#     python -m pip install -r requirements.txt
+# 打包成单文件 exe 时再加：
+#     python -m pip install pyinstaller
+psutil>=5.9
+pythonnet>=3.0      # 进程内读取 LibreHardwareMonitorLib.dll（温度 / 功率 / 显存）
+pystray>=0.19       # 托盘图标（缺失时退化为"关窗即退出"）
+Pillow>=10          # 画托盘图标
+mss>=9             # 快速抓屏（比 PIL 快数倍，用于投屏）
